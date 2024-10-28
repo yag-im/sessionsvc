@@ -1,0 +1,62 @@
+# create a new session
+POST http://localhost:80/sessions/create
+content-type: application/json
+
+{
+    "app_release_uuid": "421ba7f4-97ad-4c5d-8fbc-e176513516ba",
+    "user_id": 0,
+    "preferred_dcs": null,
+    "ws_conn": {"id": "sample-ws-conn-id", "consumer_id": "sample-ws-conn-consumer-id"}
+}
+###
+
+# get session
+GET http://localhost:80/sessions/35667032-69ff-483d-a5bd-d0fadcf3b574
+###
+
+# get user sessions
+GET http://localhost:80/users/0/sessions
+###
+
+# start (or resume) session
+POST http://localhost:80/sessions/e2ad8ca1-01d8-473f-a981-9e72ee73c95d/start
+content-type: application/json
+
+{
+    "ws_conn": {
+        "id": "sample-ws-conn-id",
+        "consumer_id": "sample-ws-conn-consumer-id",
+        "producer_id": "sample-ws-conn-producer-id"
+    }
+}
+###
+
+# pause session
+POST http://localhost:80/sessions/1239114c-61c4-489f-83d2-52d15a5ea1cc/pause
+###
+
+# close (and remove) session
+POST http://localhost:80/sessions/973c7b38-ba48-4208-8106-9d8b05a456c0/close
+###
+
+# get consumer sessions
+GET http://localhost:80/consumers/sample-ws-conn-consumer-id/sessions
+###
+
+# get producer sessions
+GET http://localhost:80/producers/sample-ws-conn-producer-id/sessions
+###
+
+# get all sessions
+GET http://localhost:80/sessions
+###
+
+# submit webrtc stats
+# https://developer.mozilla.org/en-US/docs/Web/API/RTCStatsReport
+POST http://localhost:80/sessions/69b9a334-e590-4c03-a17d-993aa33213b8/stats
+content-type: application/json
+
+{
+    "stats": "{\"candidate_pair\": {\"currentRoundTripTime\": 0.222},\"inbound_rtp\": {\"framesPerSecond\": 59,    \"nackCount\": 2,    \"packetsLost\": 567},\"remote_inbound_rtp\": {    \"packetsLost\": 567,    \"round_trip_time\": 0.222,    \"roundTripTimeMeasurements\": 1}\n    }"
+}
+###
