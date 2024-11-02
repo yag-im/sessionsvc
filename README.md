@@ -1,16 +1,15 @@
 # sessionsvc
 
-sessionsvc is an app's sessions manager service
+sessionsvc is an app's sessions management service
 
-## release a new version
+### Prerequisite
 
-Inside a devcontainer:
+Create *.devcontainer/secrets.env* file:
 
-    make lint
-    make build
+    SQLDB_PASSWORD=***VALUE***
 
-Outside of a devcontainer:
+The following devcontainers should be up and running:
 
-    make docker-build
-    make docker-run
-    make docker-pub TAG=0.0.1
+    appsvc
+
+Then simply open this project in any IDE that supports devcontainers (VSCode is recommended).
