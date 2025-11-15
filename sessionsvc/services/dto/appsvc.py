@@ -140,6 +140,8 @@ class AppReleaseDetails:
     ts_added: datetime.datetime
     uuid: str
     year_released: int
+    tags: list[str] | None = None
+    Schema: t.ClassVar[t.Type[Schema]] = Schema  # pylint: disable=invalid-name
 
 
 @dataclass
@@ -205,6 +207,7 @@ class SearchAppsResponseItem:
     name: str
     uuid: str
     year_released: int
+    tags: list[str] | None = None
 
 
 @dataclass
