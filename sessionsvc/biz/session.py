@@ -148,9 +148,10 @@ def create_session(req: CreateSessionRequestDTO) -> CreateSessionResponseDTO:
             UpdateSessionDC(
                 id=create_sess_res.session_id,
                 container=SessionDC.Container(
-                    run_app_res.container.id,
+                    id=run_app_res.container.id,
                     node_id=run_app_res.container.node_id,
                     region=run_app_res.container.region,
+                    cpuset_cpus=run_app_res.container.cpuset_cpus,
                 ),
             )
         )
