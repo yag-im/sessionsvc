@@ -234,6 +234,9 @@ def get_producer_sessions(producer_id: str) -> list[SessionDC]:
     return [SessionDC.from_sessiondao(s) for s in sessions]
 
 
-def get_sessions() -> list[SessionDC]:
-    sessions = sqldb.session.query(SessionDAO).all()
+def get_sessions(node_id: t.Optional[str] = None) -> list[SessionDC]:
+    query = sqldb.session.query(SessionDAO)
+    if node_id is not None:
+        query = query.filter(SessionDAO.container["node_id"].astext == node_id)
+    sessions = query.all()
     return [SessionDC.from_sessiondao(s) for s in sessions]

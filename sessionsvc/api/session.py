@@ -1,3 +1,5 @@
+import typing as t
+
 from flask import (
     Response,
     request,
@@ -105,5 +107,6 @@ class GetSessions(Resource):
     def get(self) -> Response:
         """Get all sessions."""
 
-        res: GetSessionsResponseDTO = GetSessionsResponseDTO(sessions=get_sessions())
+        node_id: t.Optional[str] = request.args.get("node_id")
+        res: GetSessionsResponseDTO = GetSessionsResponseDTO(sessions=get_sessions(node_id=node_id))
         return GetSessionsResponseDTO.Schema().dump(res), 200

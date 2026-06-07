@@ -51,6 +51,10 @@ GET http://localhost:80/producers/sample-ws-conn-producer-id/sessions
 GET http://localhost:80/sessions
 ###
 
+# get sessions for node
+GET http://localhost:80/sessions?node_id=sample-node-id
+###
+
 # submit webrtc stats
 # https://developer.mozilla.org/en-US/docs/Web/API/RTCStatsReport
 POST http://localhost:80/sessions/69b9a334-e590-4c03-a17d-993aa33213b8/stats
