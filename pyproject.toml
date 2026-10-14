@@ -1,72 +1,86 @@
 [build-system]
-build-backend = "poetry_dynamic_versioning.backend"
-requires = ["poetry-core", "poetry-dynamic-versioning"]
+build-backend = "hatchling.build"
+requires = ["hatchling", "uv-dynamic-versioning"]
 
-[tool.poetry]
-authors = ["acme-im"]
-description = "yag app sessions manager"
-keywords = ["signaling"]
+[project]
 name = "sessionsvc"
+dynamic = ["version"]
+description = "yag app sessions manager"
+authors = [{ name = "acme-im" }]
+keywords = ["signaling"]
 readme = "README.md"
-version = "0.0.0"
-packages = [{ include = "sessionsvc" }]
+requires-python = ">=3.14,<4"
+dependencies = [
+    "fastapi>=0.142.2,<1",
+    "gunicorn>=23.0.0,<24",
+    "opentelemetry-distro",
+    "opentelemetry-exporter-otlp",
+    "psycopg[binary]>=3.2,<4",
+    "pydantic>=2.12,<3",
+    "requests>=2.32.4,<3",
+    "sqlalchemy>=2.1.1,<3",
+    "uvicorn-worker>=0.4.0,<1",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-gunicorn = "^23.0.0"
-flask-restful = "^0.3.10"
-flask-sqlalchemy = "^3.1.1"
-marshmallow = "^3.20.2"
-marshmallow-dataclass = "^8.6.0"
-opentelemetry-distro = "*"
-opentelemetry-exporter-otlp = "*"
-psycopg2 = "^2.9.9"
+[dependency-groups]
+dev = [
+    "pre-commit",
+    "pyright",
+    "ruff",
+    { include-group = "test" },
+]
+test = [
+    "pytest",
+]
 
-[tool.poetry.group.dev.dependencies]
-pre-commit = "*"
-tox = "*"
-# move mypys' types-* modules deps into .pre-commit-config.yaml
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
 
-[tool.poetry.group.test.dependencies]
-pytest = "*"
+[tool.hatch.build.targets.wheel]
+packages = ["sessionsvc"]
 
-[tool.poetry-dynamic-versioning]
-enable = true
+[tool.uv-dynamic-versioning]
 vcs = "git"
 style = "semver"
+fallback-version = "0.0.0"
 
-[tool.bandit.assert_used]
-exclude = ["*_test.py", "test_*.py"]
-
-[tool.black]
+[tool.ruff]
 line-length = 120
-exclude = '''
-(
-  \.git
-  | \.tox
-  | \.venv
-  | venv
-  | build
-  | dist
-)
-'''
+target-version = "py314"
+extend-exclude = ["**/gen/*", "target"]
 
-[tool.isort]
-include_trailing_comma = true
-force_grid_wrap = 2
-use_parentheses = true
-line_length = 120
-profile = "black"
-multi_line_output = 3
-skip = "target"
-skip_glob = "**/gen/*,.venv*/*,venv*/*,.tox/*"
-known_first_party = "sessionsvc"
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "B",   # flake8-bugbear
+    "S",   # flake8-bandit
+    "C4",  # flake8-comprehensions
+    "PL",  # pylint
+]
+ignore = [
+    "E501",     # line too long, defer to formatter
+    "N818",     # exception names without Error suffix
+    "PLR0913",  # too many arguments
+    "PLR2004",  # magic value comparison
+]
 
-[tool.mypy]
-disallow_incomplete_defs = true
-disallow_untyped_defs = true
-ignore_missing_imports = true
-plugins = "marshmallow_dataclass.mypy"
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["sessionsvc"]
+split-on-trailing-comma = true
+
+[tool.pyright]
+include = ["sessionsvc"]
+pythonVersion = "3.14"
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
 
 [tool.pytest.ini_options]
 addopts = "-s -v"
@@ -75,30 +89,3 @@ markers = [
     "unit: marks unittests"
 ]
 testpaths = "tests"
-
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-isolated_build = True
-skipsdist = True
-skip_missing_interpreters = True
-
-[testenv:lint]
-skip_install = false
-recreate = false
-ignore_errors = false
-deps =
-    pre-commit
-commands =
-    pre-commit run --all-files
-
-[testenv:test]
-recreate = false
-ignore_errors = true
-deps =
-    poetry
-commands_pre =
-    poetry install --with test
-commands =
-    poetry run pytest tests/
-"""

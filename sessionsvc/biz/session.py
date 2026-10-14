@@ -1,10 +1,7 @@
 import logging
 import typing as t
 import uuid
-from dataclasses import (
-    dataclass,
-    field,
-)
+from dataclasses import dataclass
 
 from sqlalchemy.exc import IntegrityError
 
@@ -17,6 +14,7 @@ from sessionsvc.biz.dto import (
     StartSessionRequestDTO,
 )
 from sessionsvc.biz.errors import (
+    AppSvcException,
     SessionNotFoundException,
     SessionOpException,
     SessionsQuotaLimitExceededException,
@@ -37,7 +35,7 @@ class UpdateSessionDC:
     id: str
     app_release_uuid: t.Optional[str] = None
     container: t.Optional[SessionDC.Container] = None
-    status: t.Optional[SessionStatus] = field(metadata={"by_value": True}, default=None)
+    status: t.Optional[SessionStatus] = None
     user_id: t.Optional[int] = None
     ws_conn: t.Optional[SessionDC.WsConn] = None
 
@@ -56,9 +54,9 @@ def _update_session(session: UpdateSessionDC) -> None:
     if session.status:
         upd_params[SessionDAO.status] = session.status.value
     if session.ws_conn:
-        upd_params[SessionDAO.ws_conn] = SessionDC.WsConn.Schema().dump(session.ws_conn)
+        upd_params[SessionDAO.ws_conn] = session.ws_conn.model_dump(mode="json")
     if session.container:
-        upd_params[SessionDAO.container] = SessionDC.Container.Schema().dump(session.container)
+        upd_params[SessionDAO.container] = session.container.model_dump(mode="json")
     rows_updated = sqldb.session.query(SessionDAO).filter(SessionDAO.id == session.id).update(upd_params)
     if rows_updated == 0:
         raise SessionNotFoundException()
@@ -75,13 +73,11 @@ def _create_session(req: CreateSessionRequestDTO) -> CreateSessionResponseDTO:
         id=session_id,
         app_release_uuid=req.app_release_uuid,
         user_id=req.user_id,
-        ws_conn=SessionDC.WsConn.Schema().dump(
-            SessionDC.WsConn(
-                id=req.ws_conn.id,
-                consumer_id=req.ws_conn.consumer_id,
-                producer_id=None,
-            )
-        ),
+        ws_conn=SessionDC.WsConn(
+            id=req.ws_conn.id,
+            consumer_id=req.ws_conn.consumer_id,
+            producer_id=None,
+        ).model_dump(mode="json"),
         status=SessionStatus.PENDING.value,
     )
     sqldb.session.add(new_session)
@@ -101,6 +97,8 @@ def create_session(req: CreateSessionRequestDTO) -> CreateSessionResponseDTO:
                 #   - "fast-click": same app was quickly started more than once
                 #   - same app was requested to be run in a new tab
                 raise SessionOpException(f"found existing session in a non-paused state (id: {session.id})")
+            if not session.container:
+                raise SessionOpException(f"found paused session without a container (id: {session.id})")
             # updating session primarily to reset old ws_conn.producer_id so it couldn't control resumed session
             # consumer_id and id may be also switched in a session resume flow
             _update_session(
@@ -195,14 +193,23 @@ def close_session(session_id: str) -> None:
     try:
         session: SessionDC = get_session(session_id)
         if session.status in {SessionStatus.PAUSED, SessionStatus.ACTIVE} and session.container:
-            appsvc.stop_app(
-                dto_appsvc.StopAppRequestDTO(
-                    container=dto_appsvc.ContainerOpDescr(
-                        id=session.container.id,
-                        node_id=session.container.node_id,
+            try:
+                appsvc.stop_app(
+                    dto_appsvc.StopAppRequestDTO(
+                        container=dto_appsvc.ContainerOpDescr(
+                            id=session.container.id,
+                            node_id=session.container.node_id,
+                        )
                     )
                 )
-            )
+            except AppSvcException as e:
+                # e.g. node decommissioned; a surviving container is reaped by the jobs' orphaned containers sweep
+                log.warning(
+                    "failed to stop container %s, closing session %s anyway: %s",
+                    session.container.id,
+                    session_id,
+                    e,
+                )
         _delete_session(session_id)
     except SessionNotFoundException:
         log.warning("session %s was already closed", session_id)

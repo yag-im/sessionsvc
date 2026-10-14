@@ -1,11 +1,6 @@
-import typing as t
+from fastapi import APIRouter
 
-from flask import (
-    Response,
-    request,
-)
-from flask_restful import Resource
-
+from sessionsvc.biz import session as session_biz
 from sessionsvc.biz.dto import (
     CreateSessionRequestDTO,
     CreateSessionResponseDTO,
@@ -14,99 +9,80 @@ from sessionsvc.biz.dto import (
     StartSessionRequestDTO,
     SubmitWebRtcStatsRequestDTO,
 )
-from sessionsvc.biz.session import (
-    close_session,
-    create_session,
-    get_consumer_sessions,
-    get_producer_sessions,
-    get_session,
-    get_sessions,
-    get_user_sessions,
-    pause_session,
-    start_session,
-)
 from sessionsvc.biz.stats import submit_webrtc_stats
 
-
-class CreateSession(Resource):
-    def post(self) -> Response:
-        """Creates a new session."""
-
-        req: CreateSessionRequestDTO = CreateSessionRequestDTO.Schema().load(data=request.get_json())
-        res = create_session(req)
-        return CreateSessionResponseDTO.Schema().dump(res), 200
+router = APIRouter()
 
 
-class StartSession(Resource):
-    def post(self, session_id: str) -> Response:
-        """Starts a new or resumes a paused session."""
+@router.post("/sessions/create")
+def create_session(req: CreateSessionRequestDTO) -> CreateSessionResponseDTO:
+    """Creates a new session."""
 
-        req: StartSessionRequestDTO = StartSessionRequestDTO.Schema().load(data=request.get_json())
-        start_session(session_id, req)
-        return "", 200
+    return session_biz.create_session(req)
 
 
-class PauseSession(Resource):
-    def post(self, session_id: str) -> Response:
-        """Pauses an active session."""
+@router.post("/sessions/{session_id}/start")
+def start_session(session_id: str, req: StartSessionRequestDTO) -> str:
+    """Starts a new or resumes a paused session."""
 
-        pause_session(session_id)
-        return "", 200
-
-
-class CloseSession(Resource):
-    def post(self, session_id: str) -> Response:
-        """Closes and removes session."""
-
-        close_session(session_id)
-        return "", 200
+    session_biz.start_session(session_id, req)
+    return ""
 
 
-class GetSession(Resource):
-    def get(self, session_id: str) -> Response:
-        """Get existing session."""
+@router.post("/sessions/{session_id}/pause")
+def pause_session(session_id: str) -> str:
+    """Pauses an active session."""
 
-        res: GetSessionResponseDTO = GetSessionResponseDTO(session=get_session(session_id))
-        return GetSessionResponseDTO.Schema().dump(res), 200
-
-
-class GetUserSessions(Resource):
-    def get(self, user_id: str) -> Response:
-        """Get user sessions."""
-
-        res: GetSessionsResponseDTO = GetSessionsResponseDTO(sessions=get_user_sessions(int(user_id)))
-        return GetSessionsResponseDTO.Schema().dump(res), 200
+    session_biz.pause_session(session_id)
+    return ""
 
 
-class GetConsumerSessions(Resource):
-    def get(self, consumer_id: str) -> Response:
-        """Get consumer sessions."""
+@router.post("/sessions/{session_id}/close")
+def close_session(session_id: str) -> str:
+    """Closes and removes session."""
 
-        res: GetSessionsResponseDTO = GetSessionsResponseDTO(sessions=get_consumer_sessions(consumer_id))
-        return GetSessionsResponseDTO.Schema().dump(res), 200
-
-
-class GetProducerSessions(Resource):
-    def get(self, producer_id: str) -> Response:
-        """Get producer sessions."""
-
-        res: GetSessionsResponseDTO = GetSessionsResponseDTO(sessions=get_producer_sessions(producer_id))
-        return GetSessionsResponseDTO.Schema().dump(res), 200
+    session_biz.close_session(session_id)
+    return ""
 
 
-class SubmitWebRtcStats(Resource):
-    def post(self, session_id: str) -> Response:
-        """Submit webrtc stats for a given session."""
+@router.post("/sessions/{session_id}/stats")
+def submit_stats(session_id: str, req: SubmitWebRtcStatsRequestDTO) -> str:
+    """Submit webrtc stats for a given session."""
 
-        req: SubmitWebRtcStatsRequestDTO = SubmitWebRtcStatsRequestDTO.Schema().load(data=request.get_json())
-        submit_webrtc_stats(session_id, req)
-        return "", 200
+    submit_webrtc_stats(session_id, req)
+    return ""
 
 
-class GetSessions(Resource):
-    def get(self) -> Response:
-        """Get all sessions."""
+@router.get("/sessions/{session_id}")
+def get_session(session_id: str) -> GetSessionResponseDTO:
+    """Get existing session."""
 
-        node_id: t.Optional[str] = request.args.get("node_id")
-        res: GetSessionsResponseDTO = GetSessionsResponseDTO(sessions=get_sessions(node_id=node_id))
-        return GetSessionsResponseDTO.Schema().dump(res), 200
+    return GetSessionResponseDTO(session=session_biz.get_session(session_id))
+
+
+@router.get("/sessions")
+def get_sessions(node_id: str | None = None) -> GetSessionsResponseDTO:
+    """Get all sessions."""
+
+    return GetSessionsResponseDTO(sessions=session_biz.get_sessions(node_id=node_id))
+
+
+@router.get("/consumers/{consumer_id}/sessions")
+def get_consumer_sessions(consumer_id: str) -> GetSessionsResponseDTO:
+    """Get consumer sessions."""
+
+    return GetSessionsResponseDTO(sessions=session_biz.get_consumer_sessions(consumer_id))
+
+
+@router.get("/producers/{producer_id}/sessions")
+def get_producer_sessions(producer_id: str) -> GetSessionsResponseDTO:
+    """Get producer sessions."""
+
+    return GetSessionsResponseDTO(sessions=session_biz.get_producer_sessions(producer_id))
+
+
+@router.get("/users/{user_id}/sessions")
+def get_user_sessions(user_id: int) -> GetSessionsResponseDTO:
+    """Get user sessions."""
+
+    return GetSessionsResponseDTO(sessions=session_biz.get_user_sessions(user_id))

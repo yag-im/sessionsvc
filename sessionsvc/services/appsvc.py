@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 
@@ -23,13 +22,13 @@ def run_app(req: RunAppRequestDTO) -> RunAppResponseDTO:
     try:
         res = s.post(
             url=f"{APPSVC_URL}/apps/run",
-            data=json.dumps(RunAppRequestDTO.Schema().dump(req)),
+            data=req.model_dump_json(),
             headers={"Content-Type": "application/json"},
             timeout=(3, 55),
         )
         if res.status_code != 200:
             raise AppSvcException(res.text)
-        return RunAppResponseDTO.Schema().load(data=res.json())
+        return RunAppResponseDTO.model_validate(res.json())
     except Exception as e:
         log.exception(e)
         if isinstance(e, AppSvcException):
@@ -42,7 +41,7 @@ def pause_app(req: PauseAppRequestDTO) -> None:
     try:
         res = s.post(
             url=f"{APPSVC_URL}/apps/pause",
-            data=json.dumps(PauseAppRequestDTO.Schema().dump(req)),
+            data=req.model_dump_json(),
             headers={"Content-Type": "application/json"},
             timeout=REQUESTS_TIMEOUT_CONN_READ,
         )
@@ -60,7 +59,7 @@ def resume_app(req: ResumeAppRequestDTO) -> None:
     try:
         res = s.post(
             url=f"{APPSVC_URL}/apps/resume",
-            data=json.dumps(ResumeAppRequestDTO.Schema().dump(req)),
+            data=req.model_dump_json(),
             headers={"Content-Type": "application/json"},
             timeout=REQUESTS_TIMEOUT_CONN_READ,
         )
@@ -78,7 +77,7 @@ def stop_app(req: StopAppRequestDTO) -> None:
     try:
         res = s.post(
             url=f"{APPSVC_URL}/apps/stop",
-            data=json.dumps(StopAppRequestDTO.Schema().dump(req)),
+            data=req.model_dump_json(),
             headers={"Content-Type": "application/json"},
             timeout=REQUESTS_TIMEOUT_CONN_READ,
         )

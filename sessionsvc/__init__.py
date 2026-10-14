@@ -1,30 +1,42 @@
+import json
+import logging
 import os
 
-from flask import Flask
+from fastapi import FastAPI
+from sqlalchemy import URL
 
-from sessionsvc.api import api
+from sessionsvc.api import router
 from sessionsvc.biz import (
     errors,
     log,
 )
-from sessionsvc.biz.sqldb import sqldb
+from sessionsvc.biz.sqldb import (
+    SessionScopeMiddleware,
+    sqldb,
+)
 
 
-def create_app() -> Flask:
-    app = Flask(__name__)
-    app.config.from_prefixed_env()
-    app.config["SQLALCHEMY_DATABASE_URI"] = (
-        f'postgresql://{os.environ["SQLDB_USERNAME"]}:{os.environ["SQLDB_PASSWORD"]}@{os.environ["SQLDB_HOST"]}:\
-        {os.environ["SQLDB_PORT"]}/{os.environ["SQLDB_DBNAME"]}'
+def create_app() -> FastAPI:
+    log.init_logging()
+
+    sqldb.init_app(
+        URL.create(
+            "postgresql+psycopg",
+            username=os.environ["SQLDB_USERNAME"],
+            password=os.environ["SQLDB_PASSWORD"],
+            host=os.environ["SQLDB_HOST"],
+            port=int(os.environ["SQLDB_PORT"]),
+            database=os.environ["SQLDB_DBNAME"],
+        ),
+        json.loads(os.environ.get("SQLDB_ENGINE_OPTIONS", "{}")),
     )
 
-    # init extensions
-    api.init_app(app)
-    sqldb.init_app(app)
+    app = FastAPI(title="sessionsvc")
+    app.include_router(router)
+    app.add_middleware(SessionScopeMiddleware)
     errors.init_app(app)
-    log.init_app(app)
 
-    app.logger.info("app init completed")
+    logging.getLogger("sessionsvc").info("app init completed")
 
     # import logging
     # logging.basicConfig()
